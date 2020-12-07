@@ -32,19 +32,27 @@ namespace Utils
 		return true;
 	}
 
-	bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader)
+	bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader, std::vector<const GLchar*>* pSources)
 	{
 		std::string shaderCode;
 		if (!ReadFile(path, shaderCode))
 		{
+			shader = GL_FALSE;
 			LOG_ERROR("File %s not found", path.c_str());
 			return false;
 		}
 
 		shader = glCreateShader(shaderType);
-
-		const GLchar* sources[] = { shaderCode.c_str() };
-		glShaderSource(shader, 1, sources, NULL);
+		std::vector<const GLchar*> sources;
+		if (pSources != nullptr)
+		{
+			for (auto source : *pSources)
+			{
+				sources.push_back(source);
+			}
+		}
+		sources.push_back(shaderCode.c_str());
+		glShaderSource(shader, sources.size(), sources.data(), NULL);
 
 		glCompileShader(shader);
 		GLint compiled = GL_FALSE;
@@ -64,6 +72,7 @@ namespace Utils
 			}
 			glDeleteShader(shader);
 
+			shader = GL_FALSE;
 			return false;
 		}
 

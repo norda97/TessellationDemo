@@ -1,6 +1,4 @@
-#version 420
 
-layout (triangles, fractional_odd_spacing, ccw) in;
 
 layout(location = 0) in vec3 tese_Color[gl_MaxPatchVertices];
 

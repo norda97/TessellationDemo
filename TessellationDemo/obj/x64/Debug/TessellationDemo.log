@@ -1,2 +1,6 @@
 ﻿  main.cpp
+C:\Users\Adrian\Desktop\Programming\TessellationDemo\TessellationDemo\src\main.cpp(132,85): warning C4390: ';': empty controlled statement found; is this the intent?
+C:\Users\Adrian\Desktop\Programming\TessellationDemo\TessellationDemo\src\main.cpp(133,87): warning C4390: ';': empty controlled statement found; is this the intent?
+C:\Users\Adrian\Desktop\Programming\TessellationDemo\TessellationDemo\src\main.cpp(134,93): warning C4390: ';': empty controlled statement found; is this the intent?
+C:\Users\Adrian\Desktop\Programming\TessellationDemo\TessellationDemo\src\main.cpp(137,97): warning C4390: ';': empty controlled statement found; is this the intent?
   TessellationDemo.vcxproj -> C:\Users\Adrian\Desktop\Programming\TessellationDemo\TessellationDemo\..\build\bin\Debug\x86_64\TessellationDemo.exe

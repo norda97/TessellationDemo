@@ -24,5 +24,5 @@ namespace Utils
 	};
 
 	bool ReadFile(const std::string& filename, std::string& result);
-	bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader);
+	bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader, std::vector<const GLchar*>* pSources);
 }

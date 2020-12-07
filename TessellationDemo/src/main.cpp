@@ -19,6 +19,8 @@ GLuint g_Vertices, g_Indices;
 GLuint g_UniformSettings, g_UniformSettingsBlockIndex;
 GLuint g_Program, g_TempProgram;
 
+std::string g_TessSpacing;
+
 Utils::SUniformSettings g_Settings = {};
 
 static void ErrorCallback(int error, const char* description)
@@ -26,21 +28,20 @@ static void ErrorCallback(int error, const char* description)
 	fprintf(stderr, "Error: %s\n", description);
 }
 
-bool CreateProgram(GLuint& program)
+bool CreateProgram(
+	GLuint& program,
+	GLuint vs = GL_FALSE,
+	GLuint fs = GL_FALSE,
+	GLuint tesc = GL_FALSE,
+	GLuint tese = GL_FALSE)
 {
 	using namespace Utils;
 
-	GLuint vs, fs, tesc, tese;
-	if (!LoadShader("assets/shaders/tessellation.vert", GL_VERTEX_SHADER, vs)) return false;
-	if (!LoadShader("assets/shaders/tessellation.frag", GL_FRAGMENT_SHADER, fs)) return false;
-	if (!LoadShader("assets/shaders/tessellation.tesc", GL_TESS_CONTROL_SHADER, tesc)) return false;
-	if (!LoadShader("assets/shaders/tessellation.tese", GL_TESS_EVALUATION_SHADER, tese)) return false;
-
 	program = glCreateProgram();
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
-	glAttachShader(program, tesc);
-	glAttachShader(program, tese);
+	if (vs != GL_FALSE) glAttachShader(program, vs);
+	if (fs != GL_FALSE) glAttachShader(program, fs);
+	if (tesc != GL_FALSE) glAttachShader(program, tesc);
+	if (tese != GL_FALSE) glAttachShader(program, tese);
 
 	glLinkProgram(program);
 	GLint linked = GL_FALSE;
@@ -93,7 +94,14 @@ bool Init()
 		glBufferData(GL_ARRAY_BUFFER, sizeof(uint32_t) * 6, indices, GL_STATIC_DRAW);
 	}
 
-	if (!CreateProgram(g_Program))
+	GLuint vs, fs, tesc, tese;
+	if (!LoadShader("assets/shaders/tessellation.vert", GL_VERTEX_SHADER, vs, nullptr)) return false;
+	if (!LoadShader("assets/shaders/tessellation.frag", GL_FRAGMENT_SHADER, fs, nullptr)) return false;
+	if (!LoadShader("assets/shaders/tessellation.tesc", GL_TESS_CONTROL_SHADER, tesc, nullptr)) return false;
+	std::vector<const GLchar*> sources = { "#version 420\n", "layout(triangles, equal_spacing, ccw) in;\n" };
+	if (!LoadShader("assets/shaders/tessellation.tese", GL_TESS_EVALUATION_SHADER, tese, &sources)) return false;
+
+	if (!CreateProgram(g_Program, vs, fs, tesc, tese))
 	{
 		LOG_ERROR("Failed to create program!");
 		return false;
@@ -114,6 +122,30 @@ bool Init()
 void ReleaseProgram()
 {
 	glDeleteProgram(g_Program);
+}
+
+void RebuildProgram()
+{
+	using namespace Utils;
+
+	GLuint vs, fs, tesc, tese;
+	if (!LoadShader("assets/shaders/tessellation.vert", GL_VERTEX_SHADER, vs, nullptr));
+	if (!LoadShader("assets/shaders/tessellation.frag", GL_FRAGMENT_SHADER, fs, nullptr));
+	if (!LoadShader("assets/shaders/tessellation.tesc", GL_TESS_CONTROL_SHADER, tesc, nullptr));
+	std::string teseLayout = "layout(triangles, " + g_TessSpacing + ", ccw) in;\n";
+	std::vector<const GLchar*> sources = { "#version 420\n", teseLayout.c_str() };
+	if (!LoadShader("assets/shaders/tessellation.tese", GL_TESS_EVALUATION_SHADER, tese, &sources));
+
+	if (CreateProgram(g_TempProgram, vs, fs, tesc, tese))
+	{
+		ReleaseProgram();
+		g_Program = g_TempProgram;
+		LOG_INFO("Succeded Rebuilding Program");
+	}
+	else
+	{
+		LOG_ERROR("Failed to Rebuild Program!");
+	}
 }
 
 void Release()
@@ -176,16 +208,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	if (key == GLFW_KEY_5 && action == GLFW_PRESS)
 	{
 		LOG_INFO("Rebuilding Program");
-		if (CreateProgram(g_TempProgram))
-		{
-			ReleaseProgram();
-			g_Program = g_TempProgram;
-			LOG_INFO("Succeded Rebuilding Program");
-		}
-		else
-		{
-			LOG_ERROR("Failed to Rebuild Program!");
-		}
+		RebuildProgram();
 	}
 }
 
@@ -277,6 +300,20 @@ int main(void)
 				static glm::vec3 scale = glm::vec3(1.0f);
 				ImGui::InputFloat3("Scale", &scale[0]);
 				g_Settings.ModelMatrix = glm::scale(glm::mat4(1.0f), scale);
+
+				static int style_idx = 0;
+				if (ImGui::Combo("Tesselation Spacing", &style_idx, "equal_spacing\0fractional_even_spacing\0fractional_odd_spacing\0"))
+				{
+					switch (style_idx)
+					{
+					case 0: g_TessSpacing = "equal_spacing"; break;
+					case 1: g_TessSpacing = "fractional_even_spacing"; break;
+					case 2: g_TessSpacing = "fractional_odd_spacing"; break;
+					}
+
+					LOG_INFO("Rebuilding Program");
+					RebuildProgram();
+				}
 
 				static glm::ivec4 tessLevels = glm::ivec4(1);
 				ImGui::SliderInt("TessLevelInner", &tessLevels.x, 1, 32);

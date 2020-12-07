@@ -1,18 +1,5 @@
 -- premake5.lua
 
-
-workspace "TessellationDemo" -- Name of sln file
-    location "TessellationDemo" -- Folder where to put it
-    configurations { "Debug", "Release" }
-    platforms { "x64" }
-
-    --Set architecture
-    filter { "platforms:x64" }
-        system "Windows"
-        architecture "x64"
-
-    filter { }
-
 project "TessellationDemo" -- Name of project
     kind "ConsoleApp" -- Uses the console
     language "C++"
@@ -20,13 +7,14 @@ project "TessellationDemo" -- Name of project
     targetdir "build/bin/%{cfg.buildcfg}/%{cfg.architecture}" -- .exe files is in bin/(debug or release)/(x86 or x64)/
     --location of source files to include. Here we include All files ending with .h and .cpp
     --in the folder Minimal Example even files in subfolders.
-    files { "%{prj.name}/inc/**.h", "%{prj.name}/src/**.cpp" } 
+    files { "%{prj.name}/inc/**.h", "%{prj.name}/src/**.cpp", "./external/imgui/**.hpp", "./external/imgui/**.cpp" } 
 
     --Include directories
     includedirs {
         "%{prj.name}/inc",
         "./external/glm/",
         "./external/glfw-3/include",
+        "./external/imgui",
         "./external/glew-2.2/include"
     }
 

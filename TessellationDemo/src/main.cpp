@@ -1,5 +1,10 @@
 #include <iostream>
 
+#define IMGUI_IMPL_OPENGL_LOADER_GLEW
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "Utils.h"
 #include <GL/glew.h>
 
@@ -11,7 +16,10 @@
 * GLOBALS
 */
 GLuint g_Vertices, g_Indices;
+GLuint g_UniformSettings, g_UniformSettingsBlockIndex;
 GLuint g_Program, g_TempProgram;
+
+Utils::SUniformSettings g_Settings = {};
 
 static void ErrorCallback(int error, const char* description)
 {
@@ -20,6 +28,8 @@ static void ErrorCallback(int error, const char* description)
 
 bool CreateProgram(GLuint& program)
 {
+	using namespace Utils;
+
 	GLuint vs, fs, tesc, tese;
 	if (!LoadShader("assets/shaders/tessellation.vert", GL_VERTEX_SHADER, vs)) return false;
 	if (!LoadShader("assets/shaders/tessellation.frag", GL_FRAGMENT_SHADER, fs)) return false;
@@ -58,26 +68,30 @@ bool CreateProgram(GLuint& program)
 
 bool Init()
 {
-	const glm::vec3 color(0.0f, 1.0f, 0.0f);
-	SVertex vertices[4] =
+	using namespace Utils;
+	// Create Buffers
 	{
-		{ {-0.5f, 0.5f, 0.0f},	color},
-		{ {-0.5f, -0.5f, 0.0f}, color},
-		{ {0.5f, -0.5f, 0.0f},	color},
-		{ {0.5f, 0.5f, 0.0f},	color}
-	};
-	glGenBuffers(1, &g_Vertices);
-	glBindBuffer(GL_ARRAY_BUFFER, g_Vertices);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(SVertex) * 4, vertices, GL_STATIC_DRAW);
+		const glm::vec3 color(0.0f, 1.0f, 0.0f);
+		SVertex vertices[4] =
+		{
+			{ {-0.5f, 0.5f, 0.0f},	color},
+			{ {-0.5f, -0.5f, 0.0f}, color},
+			{ {0.5f, -0.5f, 0.0f},	color},
+			{ {0.5f, 0.5f, 0.0f},	color}
+		};
+		glGenBuffers(1, &g_Vertices);
+		glBindBuffer(GL_ARRAY_BUFFER, g_Vertices);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(SVertex) * 4, vertices, GL_STATIC_DRAW);
 
-	uint32_t indices[6] =
-	{
-		0, 1, 2,
-		2, 3, 0
-	};
-	glGenBuffers(1, &g_Indices);
-	glBindBuffer(GL_ARRAY_BUFFER, g_Indices);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(uint32_t) * 6, indices, GL_STATIC_DRAW);
+		uint32_t indices[6] =
+		{
+			0, 1, 2,
+			2, 3, 0
+		};
+		glGenBuffers(1, &g_Indices);
+		glBindBuffer(GL_ARRAY_BUFFER, g_Indices);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(uint32_t) * 6, indices, GL_STATIC_DRAW);
+	}
 
 	if (!CreateProgram(g_Program))
 	{
@@ -85,6 +99,15 @@ bool Init()
 		return false;
 	}
 
+	// Create Uniform
+	{
+		glGenBuffers(1, &g_UniformSettings);
+		glBindBuffer(GL_UNIFORM_BUFFER, g_UniformSettings);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(SUniformSettings), &g_Settings, GL_DYNAMIC_DRAW);
+
+		//GLuint uniformBlockIndex = glGetUniformBlockIndex(g_Program, "Settings");
+		//glUniformBlockBinding(g_Program, uniformBlockIndex, 0);
+	}
 	return true;
 }
 
@@ -98,11 +121,17 @@ void Release()
 	ReleaseProgram();
 	glDeleteBuffers(1, &g_Vertices);
 	glDeleteBuffers(1, &g_Indices);
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
 	glfwTerminate();
 }
 
 void Render()
 {
+	using namespace Utils;
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -114,6 +143,8 @@ void Render()
 
 	glBindBuffer(GL_ARRAY_BUFFER, g_Vertices);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_Indices);
+	
+	glBindBufferRange(GL_UNIFORM_BUFFER, 0, g_UniformSettings, 0, sizeof(SUniformSettings));
 
 	glVertexAttribPointer(
 		0,
@@ -170,7 +201,9 @@ int main(void)
 		return -1;
 	}
 
-	window = glfwCreateWindow(640, 480, "TessellationDemo", NULL, NULL);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	//glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	window = glfwCreateWindow(1280, 720, "TessellationDemo", NULL, NULL);
 	if (!window)
 	{
 		LOG_ERROR("Failed to init window");
@@ -194,13 +227,84 @@ int main(void)
 	}
 
 
+	// Init ImGui
+	{
+		// Setup Dear ImGui context
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+		// Setup Dear ImGui style
+		ImGui::StyleColorsDark();
+
+		// Setup Platform/Renderer backends
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init("#version 420");
+
+	}
+
 	glfwSetKeyCallback(window, KeyCallback);
+
+	bool show_demo_window = false;
+	bool show_another_window = false;
 
 	while (!glfwWindowShouldClose(window))
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		// Start the Dear ImGui frame
+		{
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+
+			if (show_demo_window)
+				ImGui::ShowDemoWindow(&show_demo_window);
+
+			{
+				static float f = 0.0f;
+				static int counter = 0;
+
+				ImGui::Begin("Tessellation Settings");                    
+				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+				ImGui::Text("This is some useful text.");             
+				ImGui::Checkbox("Demo Window", &show_demo_window);     
+				ImGui::Checkbox("Another Window", &show_another_window);
+
+				static glm::vec3 scale = glm::vec3(1.0f);
+				ImGui::InputFloat3("Scale", &scale[0]);
+				g_Settings.ModelMatrix = glm::scale(glm::mat4(1.0f), scale);
+
+				static glm::ivec4 tessLevels = glm::ivec4(1);
+				ImGui::SliderInt("TessLevelInner", &tessLevels.x, 1, 32);
+				ImGui::SliderInt("TessLevelOuter0", &tessLevels.y, 1, 32);
+				ImGui::SliderInt("TessLevelOuter1", &tessLevels.z, 1, 32);
+				ImGui::SliderInt("TessLevelOuter2", &tessLevels.w, 1, 32);
+
+				g_Settings.TessLevels.x = (float)tessLevels.x;
+				g_Settings.TessLevels.y = (float)tessLevels.y;
+				g_Settings.TessLevels.z = (float)tessLevels.z;
+				g_Settings.TessLevels.w = (float)tessLevels.w;
+
+				if (ImGui::Button("Button"))
+					counter++;
+				ImGui::SameLine();
+				ImGui::Text("counter = %d", counter);
+
+				ImGui::End();
+			}
+		}
+
+		glBindBuffer(GL_UNIFORM_BUFFER, g_UniformSettings);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(Utils::SUniformSettings), &g_Settings);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 		Render();
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 

@@ -7,76 +7,22 @@
 #include <vector>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-struct SVertex
+namespace Utils
 {
-	glm::vec3 Position;
-	glm::vec3 Color;
-};
-
-bool ReadFile(const std::string& filename, std::string& result)
-{
-	FILE* file = fopen(filename.c_str(), "rb");
-	
-	if (file == NULL)
+	struct SVertex
 	{
-		return false;
-	}
-	
-	// Go to end of file
-	if (fseek(file, 0, SEEK_END) < 0)
+		glm::vec3 Position;
+		glm::vec3 Color;
+	};
+
+	struct SUniformSettings
 	{
-		return false;
-	}
+		glm::vec4 TessLevels = { 1.0, 1.0f, 1.0f, 1.0f };
+		glm::mat4 ModelMatrix = glm::mat4(1.0f);
+	};
 
-	const long size = ftell(file);
-	result.resize(size);
-
-	// Go back to beginning of file
-	fseek(file, 0, SEEK_SET);
-
-	// Write file to string
-	fread(const_cast<char*>(result.data()), 1, size, file);
-
-	fclose(file);
-
-	return true;
-}
-
-bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader)
-{
-	std::string shaderCode;
-	if (!ReadFile(path, shaderCode))
-	{
-		LOG_ERROR("File %s not found", path.c_str());
-		return false;
-	}
-
-	shader = glCreateShader(shaderType);
-
-	const GLchar* sources[] = { shaderCode.c_str() };
-	glShaderSource(shader, 1, sources, NULL);
-
-	glCompileShader(shader);
-	GLint compiled = GL_FALSE;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-	if (compiled == GL_FALSE)
-	{
-		GLint size = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &size);
-
-		if (size != 0)
-		{
-			char* errorMsg = new char[size];
-			glGetShaderInfoLog(shader,size, NULL, errorMsg);
-			LOG_ERROR("Failed to compile %s: %s", path.c_str(), errorMsg);
-
-			delete[] errorMsg;
-		}
-		glDeleteShader(shader);
-
-		return false;
-	}
-
-	return true;
+	bool ReadFile(const std::string& filename, std::string& result);
+	bool LoadShader(const std::string path, GLenum shaderType, GLuint& shader);
 }

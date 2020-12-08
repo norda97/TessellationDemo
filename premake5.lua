@@ -1,4 +1,15 @@
+workspace "TessellationDemo" -- Name of sln file	
+    location "TessellationDemo" -- Folder where to put it	
+    configurations { "Debug", "Release" }	
+    platforms { "x64" }	
 
+    --Set architecture	
+    filter { "platforms:x64" }	
+        system "Windows"	
+        architecture "x64"	
+
+    filter { }
+    
 project "TessellationDemo" 
     kind "ConsoleApp" 
     language "C++"

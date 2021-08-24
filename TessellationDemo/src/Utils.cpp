@@ -42,7 +42,8 @@ namespace Utils
 			return false;
 		}
 
-		shader = glCreateShader(shaderType);
+		GLuint newShader = GL_FALSE;
+		newShader = glCreateShader(shaderType);
 		std::vector<const GLchar*> sources;
 		if (pSources != nullptr)
 		{
@@ -52,28 +53,32 @@ namespace Utils
 			}
 		}
 		sources.push_back(shaderCode.c_str());
-		glShaderSource(shader, sources.size(), sources.data(), NULL);
+		glShaderSource(newShader, sources.size(), sources.data(), NULL);
 
-		glCompileShader(shader);
+		glCompileShader(newShader);
 		GLint compiled = GL_FALSE;
-		glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+		glGetShaderiv(newShader, GL_COMPILE_STATUS, &compiled);
 		if (compiled == GL_FALSE)
 		{
 			GLint size = 0;
-			glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &size);
+			glGetShaderiv(newShader, GL_INFO_LOG_LENGTH, &size);
 
 			if (size != 0)
 			{
 				char* errorMsg = new char[size];
-				glGetShaderInfoLog(shader, size, NULL, errorMsg);
+				glGetShaderInfoLog(newShader, size, NULL, errorMsg);
 				LOG_ERROR("Failed to compile %s: %s", path.c_str(), errorMsg);
 
 				delete[] errorMsg;
 			}
-			glDeleteShader(shader);
+			glDeleteShader(newShader);
 
-			shader = GL_FALSE;
+			newShader = GL_FALSE;
 			return false;
+		}
+		else
+		{
+			shader = newShader;
 		}
 
 		return true;

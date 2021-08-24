@@ -98,8 +98,13 @@ bool Init()
 	if (!LoadShader("assets/shaders/tessellation.vert", GL_VERTEX_SHADER, vs, nullptr)) return false;
 	if (!LoadShader("assets/shaders/tessellation.frag", GL_FRAGMENT_SHADER, fs, nullptr)) return false;
 	if (!LoadShader("assets/shaders/tessellation.tesc", GL_TESS_CONTROL_SHADER, tesc, nullptr)) return false;
-	std::vector<const GLchar*> sources = { "#version 420\n", "layout(triangles, equal_spacing, ccw) in;\n" };
-	if (!LoadShader("assets/shaders/tessellation.tese", GL_TESS_EVALUATION_SHADER, tese, &sources)) return false;
+	
+	{
+		g_TessSpacing = "equal_spacing";
+		std::string teseLayout = "layout(triangles, " + g_TessSpacing + ", ccw) in;\n";
+		std::vector<const GLchar*> sources = { "#version 420\n", teseLayout.c_str() };
+		if (!LoadShader("assets/shaders/tessellation.tese", GL_TESS_EVALUATION_SHADER, tese, &sources)) return false;
+	}
 
 	if (!CreateProgram(g_Program, vs, fs, tesc, tese))
 	{
